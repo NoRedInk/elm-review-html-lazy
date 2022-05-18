@@ -83,8 +83,46 @@ x = lazy (y "Sample ") "Text"
         ]
 
 
+extraArgumentsTests : Test
+extraArgumentsTests =
+    let
+        header =
+            """
+module A exposing (..)
+import Html.Lazy exposing (lazy)
+import Html exposing (text)
+
+    """
+
+        runExpectErrorUnder under source =
+            (header ++ source)
+                |> Review.Test.run rule
+                |> Review.Test.expectErrors
+                    [ Review.Test.error
+                        { message = "Lamba expressions are not allowed in arguments to Html.lazy"
+                        , details = [ "See <TODO: link>" ]
+                        , under = under
+                        }
+                    ]
+
+        -- runExpectNoError source =
+        --     (header ++ source)
+        --         |> Review.Test.run rule
+        --         |> Review.Test.expectNoErrors
+    in
+    describe "Extra arguments"
+        [ test "reports no error for imported function" <|
+            \_ ->
+                """
+x = lazy text (\\_ -> "Hello")
+"""
+                    |> runExpectErrorUnder "\\_ -> \"Hello\""
+        ]
+
+
 all : Test
 all =
     describe "NoEqualityBreakingLazyArgs"
         [ firstArgumentTests
+        , extraArgumentsTests
         ]

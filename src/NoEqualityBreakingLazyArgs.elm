@@ -291,7 +291,14 @@ validateLazyFunction context node =
 
 
 validateLazyArg : Context -> Node Expression -> Maybe (Error {})
-validateLazyArg _ (Node _ exp) =
+validateLazyArg ctx (Node range exp) =
     case exp of
+        LambdaExpression _ ->
+            Just <|
+                Rule.error { message = "Lamba expressions are not allowed in arguments to Html.lazy", details = [ "See <TODO: link>" ] } range
+
+        ParenthesizedExpression child ->
+            validateLazyArg ctx child
+
         _ ->
             Nothing
