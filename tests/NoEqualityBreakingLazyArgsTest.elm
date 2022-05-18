@@ -220,6 +220,12 @@ x = lazy viewTuple { x = 1 }
 x = lazy viewTuple [1]                
 """
                     |> runExpectErrorUnder "[1]" "List constructions are not allowed in arguments to lazy"
+        , test "Fails if arg is list cons" <|
+            \_ ->
+                """
+x = lazy viewTuple (1 :: [])                
+"""
+                    |> runExpectErrorUnder "1 :: []" "List cons are not allowed in arguments to lazy"
         ]
 
 

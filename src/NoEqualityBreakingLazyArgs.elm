@@ -350,5 +350,13 @@ validateLazyArg ctx (Node range exp) =
             Just <|
                 Rule.error { message = "List constructions are not allowed in arguments to lazy", details = [ "See <TODO: link>" ] } range
 
+        OperatorApplication op _ _ _ ->
+            case op of
+                "::" ->
+                    Just <| Rule.error { message = "List cons are not allowed in arguments to lazy", details = [ "See <TODO: link>" ] } range
+
+                _ ->
+                    Nothing
+
         _ ->
             Nothing
