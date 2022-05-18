@@ -297,6 +297,10 @@ validateLazyArg ctx (Node range exp) =
             Just <|
                 Rule.error { message = "Lamba expressions are not allowed in arguments to Html.lazy", details = [ "See <TODO: link>" ] } range
 
+        TupledExpression _ ->
+            Just <|
+                Rule.error { message = "Tuple constructions are not allowed in arguments to Html.lazy", details = [ "See <TODO: link>" ] } range
+
         ParenthesizedExpression child ->
             validateLazyArg ctx child
 

@@ -94,12 +94,12 @@ import Html exposing (text)
 
     """
 
-        runExpectErrorUnder under source =
+        runExpectErrorUnder under message source =
             (header ++ source)
                 |> Review.Test.run rule
                 |> Review.Test.expectErrors
                     [ Review.Test.error
-                        { message = "Lamba expressions are not allowed in arguments to Html.lazy"
+                        { message = message
                         , details = [ "See <TODO: link>" ]
                         , under = under
                         }
@@ -111,12 +111,22 @@ import Html exposing (text)
         --         |> Review.Test.expectNoErrors
     in
     describe "Extra arguments"
-        [ test "reports no error for imported function" <|
+        [ test "Fails if arg is a lambda" <|
             \_ ->
                 """
 x = lazy text (\\_ -> "Hello")
 """
-                    |> runExpectErrorUnder "\\_ -> \"Hello\""
+                    |> runExpectErrorUnder
+                        "\\_ -> \"Hello\""
+                        "Lamba expressions are not allowed in arguments to Html.lazy"
+        , test "Fails if arg is tuple construction" <|
+            \_ ->
+                """
+x = lazy viewTuple (1,2)
+"""
+                    |> runExpectErrorUnder
+                        "(1,2)"
+                        "Tuple constructions are not allowed in arguments to Html.lazy"
         ]
 
 
