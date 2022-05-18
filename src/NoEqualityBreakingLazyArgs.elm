@@ -355,6 +355,15 @@ validateLazyArg ctx (Node range exp) =
                 "::" ->
                     Just <| Rule.error { message = "List cons are not allowed in arguments to lazy", details = [ "See <TODO: link>" ] } range
 
+                "++" ->
+                    {- TODO: There are only two "appendable" types: String and List.
+                       `("a" + "b") === "ab"` evaluates to `true` in javascript so we should not error if we are appending strings.
+                       But it would be nice to error if this is a list append operation.
+                       We'll have to essentially roll our own poor man's type inference here to see if we can determine if the left or
+                       right expression are lists.
+                    -}
+                    Nothing
+
                 _ ->
                     Nothing
 
