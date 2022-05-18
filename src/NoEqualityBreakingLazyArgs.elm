@@ -71,7 +71,7 @@ type alias Context =
 rule : Rule
 rule =
     -- Define the rule with the same name as the module it is defined in
-    Rule.newModuleRuleSchemaUsingContextCreator "OnlyTopLevelFunctions" initialContext
+    Rule.newModuleRuleSchemaUsingContextCreator "NoEqualityBreakingLazyArgs" initialContext
         -- Make it look at expressions
         |> Rule.withDeclarationListVisitor declarationListVisitor
         |> Rule.withExpressionEnterVisitor expressionEnterVisitor

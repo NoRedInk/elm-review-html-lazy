@@ -85,6 +85,6 @@ x = lazy (y "Sample ") "Text"
 
 all : Test
 all =
-    describe "OnlyTopLevelFunctions"
+    describe "NoEqualityBreakingLazyArgs"
         [ firstArgumentTests
         ]
