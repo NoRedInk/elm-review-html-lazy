@@ -342,5 +342,9 @@ validateLazyArg ctx (Node range exp) =
         ParenthesizedExpression child ->
             validateLazyArg ctx child
 
+        RecordExpr _ ->
+            Just <|
+                Rule.error { message = "Record constructions are not allowed in arguments to lazy", details = [ "See <TODO: link>" ] } range
+
         _ ->
             Nothing

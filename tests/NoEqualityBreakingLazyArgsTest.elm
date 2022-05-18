@@ -201,17 +201,19 @@ import Html exposing (text)
                 """
 x = lazy text (\\_ -> "Hello")
 """
-                    |> runExpectErrorUnder
-                        "\\_ -> \"Hello\""
-                        "Lamba expressions are not allowed in arguments to Html.lazy"
+                    |> runExpectErrorUnder "\\_ -> \"Hello\"" "Lamba expressions are not allowed in arguments to Html.lazy"
         , test "Fails if arg is tuple construction" <|
             \_ ->
                 """
 x = lazy viewTuple (1,2)
 """
-                    |> runExpectErrorUnder
-                        "(1,2)"
-                        "Tuple constructions are not allowed in arguments to Html.lazy"
+                    |> runExpectErrorUnder "(1,2)" "Tuple constructions are not allowed in arguments to Html.lazy"
+        , test "Fails if arg is record construction" <|
+            \_ ->
+                """
+x = lazy viewTuple { x = 1 }                
+"""
+                    |> runExpectErrorUnder "{ x = 1 }" "Record constructions are not allowed in arguments to lazy"
         ]
 
 
