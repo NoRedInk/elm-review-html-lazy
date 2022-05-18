@@ -8,7 +8,9 @@ module NoEqualityBreakingLazyArgs exposing (rule)
 
 import Dict exposing (Dict)
 import Elm.Syntax.Declaration exposing (Declaration(..))
+import Elm.Syntax.Exposing exposing (Exposing(..))
 import Elm.Syntax.Expression as Expression exposing (Expression(..), LetDeclaration(..))
+import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Pattern exposing (Pattern(..))
 import Review.ModuleNameLookupTable as ModuleNameLookupTable exposing (ModuleNameLookupTable)
@@ -63,6 +65,7 @@ type Binding
 
 type alias Context =
     { importedNames : ModuleNameLookupTable
+    , importedExposingAll : Set String
     , topLevelNames : Set String
     , scopedNames : List (Dict String Binding)
     }
@@ -73,20 +76,30 @@ rule =
     -- Define the rule with the same name as the module it is defined in
     Rule.newModuleRuleSchemaUsingContextCreator "NoEqualityBreakingLazyArgs" initialContext
         -- Make it look at expressions
+        |> Rule.withImportVisitor importVisitor
         |> Rule.withDeclarationListVisitor declarationListVisitor
         |> Rule.withExpressionEnterVisitor expressionEnterVisitor
         |> Rule.withExpressionExitVisitor expressionExitVisitor
         |> Rule.fromModuleRuleSchema
 
 
-
--- TODO: ModuleNameLookupTable does not properly handle "exposing (..)"
-
-
 initialContext : ContextCreator () Context
 initialContext =
-    Rule.initContextCreator (\importedNames () -> { importedNames = importedNames, topLevelNames = Set.empty, scopedNames = [] })
+    Rule.initContextCreator (\importedNames () -> { importedNames = importedNames, importedExposingAll = Set.empty, topLevelNames = Set.empty, scopedNames = [] })
         |> Rule.withModuleNameLookupTable
+
+
+{-| ModuleNameLookupTable works very well, unless a module is imported exposing all.
+We use this Import Visitor to keep track of modules that are imported exposing everything.
+-}
+importVisitor : Node Import -> Context -> ( List (Error {}), Context )
+importVisitor (Node _ { moduleName, exposingList }) context =
+    case exposingList of
+        Just (Node _ (All _)) ->
+            ( [], { context | importedExposingAll = Set.insert (Node.value moduleName |> String.join ".") context.importedExposingAll } )
+
+        _ ->
+            ( [], context )
 
 
 
@@ -117,22 +130,47 @@ declarationListVisitor declarations context =
     ( [], { context | topLevelNames = Set.fromList topLevelFunctions } )
 
 
-functionNames : Set String
-functionNames =
-    Set.fromList [ "lazy", "lazy2", "lazy3", "lazy4", "lazy5", "lazy6", "lazy7", "lazy8" ]
+type alias KnownModule =
+    { name : String
+    , functions : Set String
+    }
+
+
+htmlLazyModule : KnownModule
+htmlLazyModule =
+    { name = "Html.Lazy"
+    , functions = Set.fromList [ "lazy", "lazy2", "lazy3", "lazy4", "lazy5", "lazy6", "lazy7", "lazy8" ]
+    }
+
+
+htmlStyledLazyModule : KnownModule
+htmlStyledLazyModule =
+    { name = "Html.Styled.Lazy"
+    , functions = Set.fromList [ "lazy", "lazy2", "lazy3", "lazy4", "lazy5", "lazy6", "lazy7" ]
+    }
+
+
+allLazyFunctions =
+    Set.union htmlLazyModule.functions htmlStyledLazyModule.functions
 
 
 isLazyFunction : Context -> Node Expression -> Bool
-isLazyFunction { importedNames } node =
+isLazyFunction { importedNames, importedExposingAll } node =
     case Node.value node of
         FunctionOrValue _ functionName ->
-            Set.member functionName functionNames
+            Set.member functionName allLazyFunctions
                 && (case ModuleNameLookupTable.moduleNameFor importedNames node of
-                        Nothing ->
-                            False
+                        Just ((_ :: _) as moduleNameList) ->
+                            let
+                                moduleName =
+                                    moduleNameList |> String.join "."
+                            in
+                            moduleName == htmlLazyModule.name || moduleName == htmlStyledLazyModule.name
 
-                        Just moduleName ->
-                            moduleName == [ "Html", "Lazy" ] || moduleName == [ "Html", "Styled", "Lazy" ]
+                        _ ->
+                            -- This could happen if either `Html.Lazy` or `Html.Styled.Lazy` was imported exposing all and called unqualified
+                            (Set.member htmlLazyModule.name importedExposingAll && Set.member functionName htmlLazyModule.functions)
+                                || (Set.member htmlStyledLazyModule.name importedExposingAll && Set.member functionName htmlStyledLazyModule.functions)
                    )
 
         _ ->

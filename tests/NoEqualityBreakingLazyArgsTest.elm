@@ -5,6 +5,91 @@ import Review.Test
 import Test exposing (Test, describe, test)
 
 
+importTests : Test
+importTests =
+    let
+        badLambda =
+            "(\\s -> text s)"
+
+        hasError source =
+            ("module A exposing (..)\n" ++ source ++ " " ++ badLambda)
+                |> Review.Test.run rule
+                |> Review.Test.expectErrors
+                    [ Review.Test.error
+                        { message = "This must be a top level function in order to be properly optimized by lazy"
+                        , details = [ "Do this" ]
+                        , under = badLambda
+                        }
+                    ]
+    in
+    describe "Import Tests"
+        [ test "should identify the lazy function when module imported unaliased (Html.Lazy)" <|
+            \() ->
+                """
+import Html.Lazy
+
+x = Html.Lazy.lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported unaliased (Html.Styled.Lazy)" <|
+            \() ->
+                """
+import Html.Styled.Lazy
+
+x = Html.Styled.Lazy.lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported aliased (Html.Lazy)" <|
+            \() ->
+                """
+import Html.Lazy as Lazy
+
+x = Lazy.lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported aliased (Html.Styled.Lazy)" <|
+            \() ->
+                """
+import Html.Styled.Lazy as Lazy
+
+x = Lazy.lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported explicitly (Html.Lazy)" <|
+            \() ->
+                """
+import Html.Lazy exposing (lazy)
+
+x = lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported explicitly (Html.Styled.Lazy)" <|
+            \() ->
+                """
+import Html.Styled.Lazy exposing (lazy)
+
+x = lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported exposing all (Html.Lazy)" <|
+            \() ->
+                """
+import Html.Lazy exposing (..)
+
+x = lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported exposing all (Html.Styled.Lazy)" <|
+            \() ->
+                """
+import Html.Styled.Lazy exposing (..)
+
+x = lazy
+"""
+                    |> hasError
+        ]
+
+
 firstArgumentTests : Test
 firstArgumentTests =
     let
@@ -133,6 +218,7 @@ x = lazy viewTuple (1,2)
 all : Test
 all =
     describe "NoEqualityBreakingLazyArgs"
-        [ firstArgumentTests
+        [ importTests
+        , firstArgumentTests
         , extraArgumentsTests
         ]
