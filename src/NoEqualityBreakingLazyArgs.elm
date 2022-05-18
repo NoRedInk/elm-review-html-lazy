@@ -346,5 +346,9 @@ validateLazyArg ctx (Node range exp) =
             Just <|
                 Rule.error { message = "Record constructions are not allowed in arguments to lazy", details = [ "See <TODO: link>" ] } range
 
+        ListExpr _ ->
+            Just <|
+                Rule.error { message = "List constructions are not allowed in arguments to lazy", details = [ "See <TODO: link>" ] } range
+
         _ ->
             Nothing

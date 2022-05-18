@@ -214,6 +214,12 @@ x = lazy viewTuple (1,2)
 x = lazy viewTuple { x = 1 }                
 """
                     |> runExpectErrorUnder "{ x = 1 }" "Record constructions are not allowed in arguments to lazy"
+        , test "Fails if arg is list construction" <|
+            \_ ->
+                """
+x = lazy viewTuple [1]                
+"""
+                    |> runExpectErrorUnder "[1]" "List constructions are not allowed in arguments to lazy"
         ]
 
 
