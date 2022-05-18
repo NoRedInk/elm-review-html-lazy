@@ -329,7 +329,43 @@ validateLazyFunction context node =
 
 
 validateLazyArg : Context -> Node Expression -> Maybe (Error {})
-validateLazyArg _ (Node _ exp) =
+validateLazyArg ctx (Node range exp) =
     case exp of
+        LambdaExpression _ ->
+            Just <|
+                Rule.error { message = "Lamba expressions are not allowed in arguments to Html.lazy", details = [ "See <TODO: link>" ] } range
+
+        TupledExpression _ ->
+            Just <|
+                Rule.error { message = "Tuple constructions are not allowed in arguments to Html.lazy", details = [ "See <TODO: link>" ] } range
+
+        ParenthesizedExpression child ->
+            validateLazyArg ctx child
+
+        RecordExpr _ ->
+            Just <|
+                Rule.error { message = "Record constructions are not allowed in arguments to lazy", details = [ "See <TODO: link>" ] } range
+
+        ListExpr _ ->
+            Just <|
+                Rule.error { message = "List constructions are not allowed in arguments to lazy", details = [ "See <TODO: link>" ] } range
+
+        OperatorApplication op _ _ _ ->
+            case op of
+                "::" ->
+                    Just <| Rule.error { message = "List cons are not allowed in arguments to lazy", details = [ "See <TODO: link>" ] } range
+
+                "++" ->
+                    {- TODO: There are only two "appendable" types: String and List.
+                       `("a" + "b") === "ab"` evaluates to `true` in javascript so we should not error if we are appending strings.
+                       But it would be nice to error if this is a list append operation.
+                       We'll have to essentially roll our own poor man's type inference here to see if we can determine if the left or
+                       right expression are lists.
+                    -}
+                    Nothing
+
+                _ ->
+                    Nothing
+
         _ ->
             Nothing

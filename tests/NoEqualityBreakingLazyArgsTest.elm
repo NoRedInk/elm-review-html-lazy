@@ -168,9 +168,71 @@ x = lazy (y "Sample ") "Text"
         ]
 
 
+extraArgumentsTests : Test
+extraArgumentsTests =
+    let
+        header =
+            """
+module A exposing (..)
+import Html.Lazy exposing (lazy)
+import Html exposing (text)
+
+    """
+
+        runExpectErrorUnder under message source =
+            (header ++ source)
+                |> Review.Test.run rule
+                |> Review.Test.expectErrors
+                    [ Review.Test.error
+                        { message = message
+                        , details = [ "See <TODO: link>" ]
+                        , under = under
+                        }
+                    ]
+
+        -- runExpectNoError source =
+        --     (header ++ source)
+        --         |> Review.Test.run rule
+        --         |> Review.Test.expectNoErrors
+    in
+    describe "Extra arguments"
+        [ test "Fails if arg is a lambda" <|
+            \_ ->
+                """
+x = lazy text (\\_ -> "Hello")
+"""
+                    |> runExpectErrorUnder "\\_ -> \"Hello\"" "Lamba expressions are not allowed in arguments to Html.lazy"
+        , test "Fails if arg is tuple construction" <|
+            \_ ->
+                """
+x = lazy viewTuple (1,2)
+"""
+                    |> runExpectErrorUnder "(1,2)" "Tuple constructions are not allowed in arguments to Html.lazy"
+        , test "Fails if arg is record construction" <|
+            \_ ->
+                """
+x = lazy viewTuple { x = 1 }                
+"""
+                    |> runExpectErrorUnder "{ x = 1 }" "Record constructions are not allowed in arguments to lazy"
+        , test "Fails if arg is list construction" <|
+            \_ ->
+                """
+x = lazy viewTuple [1]                
+"""
+                    |> runExpectErrorUnder "[1]" "List constructions are not allowed in arguments to lazy"
+        , test "Fails if arg is list cons" <|
+            \_ ->
+                """
+x = lazy viewTuple (1 :: [])                
+"""
+                    |> runExpectErrorUnder "1 :: []" "List cons are not allowed in arguments to lazy"
+        ]
+
+
 all : Test
 all =
     describe "NoEqualityBreakingLazyArgs"
         [ importTests
         , firstArgumentTests
+        , extraArgumentsTests
         ]
