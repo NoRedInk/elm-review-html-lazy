@@ -1,12 +1,7 @@
 let
   sources = import ./nix/sources.nix;
   niv = import sources.niv { };
-  pkgs = import sources.nixpkgs {
-    localSystem = if builtins.currentSystem == "aarch64-darwin" then
-      "x86_64-darwin"
-    else
-      builtins.currentSystem;
-  };
+  pkgs = import sources.nixpkgs { };
 in pkgs.mkShell {
   buildInputs = [
     niv.niv
