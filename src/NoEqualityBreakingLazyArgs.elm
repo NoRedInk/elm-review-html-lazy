@@ -64,7 +64,8 @@ type Binding
 
 
 type alias Context =
-    { importedNames : ModuleNameLookupTable
+    { hasLazyImport : Bool -- If we never import a lazy module then we can avoid a lot of work
+    , importedNames : ModuleNameLookupTable
     , importedExposingAll : Set String
     , topLevelNames : Set String
     , scopedNames : List (Dict String Binding)
@@ -85,7 +86,15 @@ rule =
 
 initialContext : ContextCreator () Context
 initialContext =
-    Rule.initContextCreator (\importedNames () -> { importedNames = importedNames, importedExposingAll = Set.empty, topLevelNames = Set.empty, scopedNames = [] })
+    Rule.initContextCreator
+        (\importedNames () ->
+            { hasLazyImport = False
+            , importedNames = importedNames
+            , importedExposingAll = Set.empty
+            , topLevelNames = Set.empty
+            , scopedNames = []
+            }
+        )
         |> Rule.withModuleNameLookupTable
 
 
@@ -94,12 +103,23 @@ We use this Import Visitor to keep track of modules that are imported exposing e
 -}
 importVisitor : Node Import -> Context -> ( List (Error {}), Context )
 importVisitor (Node _ { moduleName, exposingList }) context =
+    let
+        moduleString =
+            Node.value moduleName |> String.join "."
+
+        newContext =
+            if moduleString == htmlLazyModule.name || moduleString == htmlStyledLazyModule.name then
+                { context | hasLazyImport = True }
+
+            else
+                context
+    in
     case exposingList of
         Just (Node _ (All _)) ->
-            ( [], { context | importedExposingAll = Set.insert (Node.value moduleName |> String.join ".") context.importedExposingAll } )
+            ( [], { newContext | importedExposingAll = Set.insert moduleString newContext.importedExposingAll } )
 
         _ ->
-            ( [], context )
+            ( [], newContext )
 
 
 
@@ -108,26 +128,30 @@ importVisitor (Node _ { moduleName, exposingList }) context =
 
 declarationListVisitor : List (Node Declaration) -> Context -> ( List (Error {}), Context )
 declarationListVisitor declarations context =
-    let
-        topLevelFunctions =
-            List.foldl
-                (\(Node _ declaration) functions ->
-                    case declaration of
-                        FunctionDeclaration function ->
-                            Node.value (Node.value function.declaration).name
-                                :: functions
+    if context.hasLazyImport then
+        let
+            topLevelFunctions =
+                List.foldl
+                    (\(Node _ declaration) functions ->
+                        case declaration of
+                            FunctionDeclaration function ->
+                                Node.value (Node.value function.declaration).name
+                                    :: functions
 
-                        -- TODO: Grab all the names in the pattern, they are all top level as well
-                        Destructuring _ _ ->
-                            functions
+                            -- TODO: Grab all the names in the pattern, they are all top level as well
+                            Destructuring _ _ ->
+                                functions
 
-                        _ ->
-                            functions
-                )
-                []
-                declarations
-    in
-    ( [], { context | topLevelNames = Set.fromList topLevelFunctions } )
+                            _ ->
+                                functions
+                    )
+                    []
+                    declarations
+        in
+        ( [], { context | topLevelNames = Set.fromList topLevelFunctions } )
+
+    else
+        ( [], context )
 
 
 type alias KnownModule =
@@ -179,46 +203,50 @@ isLazyFunction { importedNames, importedExposingAll } node =
 
 expressionEnterVisitor : Node Expression -> Context -> ( List (Error {}), Context )
 expressionEnterVisitor node context =
-    case Node.value node of
-        Expression.Application (functionNode :: firstArg :: args) ->
-            if isLazyFunction context functionNode then
-                ( validateLazyFunction context firstArg
-                    :: List.map (validateLazyArg context) args
-                    |> List.filterMap identity
-                , context
-                )
+    if context.hasLazyImport then
+        case Node.value node of
+            Expression.Application (functionNode :: firstArg :: args) ->
+                if isLazyFunction context functionNode then
+                    ( validateLazyFunction context firstArg
+                        :: List.map (validateLazyArg context) args
+                        |> List.filterMap identity
+                    , context
+                    )
 
-            else
+                else
+                    ( [], context )
+
+            -- Let expressions can create new name bindings that we might need to follow to determine if they are problematic
+            LetExpression { declarations } ->
+                let
+                    newScopedNames =
+                        List.concatMap
+                            (\declartionNode ->
+                                case Node.value declartionNode of
+                                    LetFunction { declaration } ->
+                                        let
+                                            { name, arguments, expression } =
+                                                Node.value declaration
+                                        in
+                                        case arguments of
+                                            [] ->
+                                                [ ( Node.value name, Just expression |> ExpressionBinding ) ]
+
+                                            _ ->
+                                                [ ( Node.value name, FunctionBinding ) ]
+
+                                    LetDestructuring patternNode expresionNode ->
+                                        destructurePatternBindings patternNode (Just expresionNode)
+                            )
+                            declarations
+                in
+                ( [], { context | scopedNames = Dict.fromList newScopedNames :: context.scopedNames } )
+
+            _ ->
                 ( [], context )
 
-        -- Let expressions can create new name bindings that we might need to follow to determine if they are problematic
-        LetExpression { declarations } ->
-            let
-                newScopedNames =
-                    List.concatMap
-                        (\declartionNode ->
-                            case Node.value declartionNode of
-                                LetFunction { declaration } ->
-                                    let
-                                        { name, arguments, expression } =
-                                            Node.value declaration
-                                    in
-                                    case arguments of
-                                        [] ->
-                                            [ ( Node.value name, Just expression |> ExpressionBinding ) ]
-
-                                        _ ->
-                                            [ ( Node.value name, FunctionBinding ) ]
-
-                                LetDestructuring patternNode expresionNode ->
-                                    destructurePatternBindings patternNode (Just expresionNode)
-                        )
-                        declarations
-            in
-            ( [], { context | scopedNames = Dict.fromList newScopedNames :: context.scopedNames } )
-
-        _ ->
-            ( [], context )
+    else
+        ( [], context )
 
 
 destructurePatternBindings : Node Pattern -> Maybe (Node Expression) -> List ( String, Binding )
@@ -266,12 +294,16 @@ destructurePatternBindings (Node _ pattern) maybeExpression =
 
 expressionExitVisitor : Node Expression -> Context -> ( List (Error {}), Context )
 expressionExitVisitor node context =
-    case Node.value node of
-        LetExpression _ ->
-            ( [], { context | scopedNames = Maybe.withDefault [] (List.tail context.scopedNames) } )
+    if context.hasLazyImport then
+        case Node.value node of
+            LetExpression _ ->
+                ( [], { context | scopedNames = Maybe.withDefault [] (List.tail context.scopedNames) } )
 
-        _ ->
-            ( [], context )
+            _ ->
+                ( [], context )
+
+    else
+        ( [], context )
 
 
 lookupBinding : List (Dict String Binding) -> String -> Maybe Binding
