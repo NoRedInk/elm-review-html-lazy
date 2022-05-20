@@ -1,5 +1,11 @@
 module Elm.Syntax.Denode exposing (..)
 
+{-| This library provides a mirror of all types in `Elm.Syntax.*` modules without any `Node` wrappers and
+    functions to `denode` from the former to the latter. 
+
+    Why? Because `Node` wrapped values are extremely noisy when dumping to string with `Debug.toString`.  
+-}
+
 import Elm.Syntax.Comments as Comments
 import Elm.Syntax.Declaration as Declaration
 import Elm.Syntax.Documentation as Documentation
