@@ -68,6 +68,7 @@ type alias Context =
     , importedExposingAll : Set String
     , topLevelNames : Set String
     , scopedNames : List (Dict String Binding)
+    , inPointFreeFunction : Maybe Bool
     }
 
 
@@ -78,14 +79,24 @@ rule =
         -- Make it look at expressions
         |> Rule.withImportVisitor importVisitor
         |> Rule.withDeclarationListVisitor declarationListVisitor
+        |> Rule.withDeclarationEnterVisitor declarationEnterVisitor
         |> Rule.withExpressionEnterVisitor expressionEnterVisitor
         |> Rule.withExpressionExitVisitor expressionExitVisitor
+        |> Rule.withDeclarationExitVisitor declarationExitVisitor
         |> Rule.fromModuleRuleSchema
 
 
 initialContext : ContextCreator () Context
 initialContext =
-    Rule.initContextCreator (\importedNames () -> { importedNames = importedNames, importedExposingAll = Set.empty, topLevelNames = Set.empty, scopedNames = [] })
+    Rule.initContextCreator
+        (\importedNames () ->
+            { importedNames = importedNames
+            , importedExposingAll = Set.empty
+            , topLevelNames = Set.empty
+            , scopedNames = []
+            , inPointFreeFunction = Nothing
+            }
+        )
         |> Rule.withModuleNameLookupTable
 
 
@@ -130,6 +141,31 @@ declarationListVisitor declarations context =
     ( [], { context | topLevelNames = Set.fromList topLevelFunctions } )
 
 
+{-| A visitor called every time we enter a declaration.
+We use this to keep track when entering a function if the function is defined completely point-free or not.
+-}
+declarationEnterVisitor : Node Declaration -> Context -> ( List (Error {}), Context )
+declarationEnterVisitor (Node _ d) context =
+    case d of
+        FunctionDeclaration { declaration } ->
+            case Node.value declaration |> .arguments of
+                [] ->
+                    ( [], { context | inPointFreeFunction = Just True } )
+
+                _ ->
+                    ( [], { context | inPointFreeFunction = Just False } )
+
+        _ ->
+            ( [], { context | inPointFreeFunction = Nothing } )
+
+
+declarationExitVisitor : Node Declaration -> Context -> ( List (Error {}), Context )
+declarationExitVisitor declaration context =
+    case declaration of
+        _ ->
+            ( [], { context | inPointFreeFunction = Nothing } )
+
+
 type alias KnownModule =
     { name : String
     , functions : Set String
@@ -150,6 +186,7 @@ htmlStyledLazyModule =
     }
 
 
+allLazyFunctions : Set String
 allLazyFunctions =
     Set.union htmlLazyModule.functions htmlStyledLazyModule.functions
 
@@ -179,46 +216,55 @@ isLazyFunction { importedNames, importedExposingAll } node =
 
 expressionEnterVisitor : Node Expression -> Context -> ( List (Error {}), Context )
 expressionEnterVisitor node context =
-    case Node.value node of
-        Expression.Application (functionNode :: firstArg :: args) ->
-            if isLazyFunction context functionNode then
-                ( validateLazyFunction context firstArg
-                    :: List.map (validateLazyArg context) args
-                    |> List.filterMap identity
-                , context
-                )
+    case context.inPointFreeFunction of
+        Nothing ->
+            ( [ Rule.globalError { message = "Impossible state encountered.", details = [] } ], context )
 
-            else
-                ( [], context )
-
-        -- Let expressions can create new name bindings that we might need to follow to determine if they are problematic
-        LetExpression { declarations } ->
-            let
-                newScopedNames =
-                    List.concatMap
-                        (\declartionNode ->
-                            case Node.value declartionNode of
-                                LetFunction { declaration } ->
-                                    let
-                                        { name, arguments, expression } =
-                                            Node.value declaration
-                                    in
-                                    case arguments of
-                                        [] ->
-                                            [ ( Node.value name, Just expression |> ExpressionBinding ) ]
-
-                                        _ ->
-                                            [ ( Node.value name, FunctionBinding ) ]
-
-                                LetDestructuring patternNode expresionNode ->
-                                    destructurePatternBindings patternNode (Just expresionNode)
-                        )
-                        declarations
-            in
-            ( [], { context | scopedNames = Dict.fromList newScopedNames :: context.scopedNames } )
-
-        _ ->
+        Just True ->
+            -- Point-free function definitions are always fine .
             ( [], context )
+
+        Just False ->
+            case Node.value node of
+                Expression.Application (functionNode :: firstArg :: args) ->
+                    if isLazyFunction context functionNode then
+                        ( validateLazyFunction context firstArg
+                            :: List.map (validateLazyArg context) args
+                            |> List.filterMap identity
+                        , context
+                        )
+
+                    else
+                        ( [], context )
+
+                -- Let expressions can create new name bindings that we might need to follow to determine if they are problematic
+                LetExpression { declarations } ->
+                    let
+                        newScopedNames =
+                            List.concatMap
+                                (\declartionNode ->
+                                    case Node.value declartionNode of
+                                        LetFunction { declaration } ->
+                                            let
+                                                { name, arguments, expression } =
+                                                    Node.value declaration
+                                            in
+                                            case arguments of
+                                                [] ->
+                                                    [ ( Node.value name, Just expression |> ExpressionBinding ) ]
+
+                                                _ ->
+                                                    [ ( Node.value name, FunctionBinding ) ]
+
+                                        LetDestructuring patternNode expresionNode ->
+                                            destructurePatternBindings patternNode (Just expresionNode)
+                                )
+                                declarations
+                    in
+                    ( [], { context | scopedNames = Dict.fromList newScopedNames :: context.scopedNames } )
+
+                _ ->
+                    ( [], context )
 
 
 destructurePatternBindings : Node Pattern -> Maybe (Node Expression) -> List ( String, Binding )
@@ -266,9 +312,14 @@ destructurePatternBindings (Node _ pattern) maybeExpression =
 
 expressionExitVisitor : Node Expression -> Context -> ( List (Error {}), Context )
 expressionExitVisitor node context =
-    case Node.value node of
-        LetExpression _ ->
-            ( [], { context | scopedNames = Maybe.withDefault [] (List.tail context.scopedNames) } )
+    case context.inPointFreeFunction of
+        Just False ->
+            case Node.value node of
+                LetExpression _ ->
+                    ( [], { context | scopedNames = Maybe.withDefault [] (List.tail context.scopedNames) } )
+
+                _ ->
+                    ( [], context )
 
         _ ->
             ( [], context )

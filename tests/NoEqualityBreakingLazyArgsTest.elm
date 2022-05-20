@@ -9,10 +9,10 @@ importTests : Test
 importTests =
     let
         badLambda =
-            "(\\s -> text s)"
+            "(\\t -> text t)"
 
         hasError source =
-            ("module A exposing (..)\n" ++ source ++ " " ++ badLambda)
+            ("module A exposing (..)\n" ++ source)
                 |> Review.Test.run rule
                 |> Review.Test.expectErrors
                     [ Review.Test.error
@@ -28,7 +28,7 @@ importTests =
                 """
 import Html.Lazy
 
-x = Html.Lazy.lazy
+x f = Html.Lazy.lazy (\\t -> text t) f
 """
                     |> hasError
         , test "should identify the lazy function when module imported unaliased (Html.Styled.Lazy)" <|
@@ -36,7 +36,7 @@ x = Html.Lazy.lazy
                 """
 import Html.Styled.Lazy
 
-x = Html.Styled.Lazy.lazy
+x f = Html.Styled.Lazy.lazy (\\t -> text t) f
 """
                     |> hasError
         , test "should identify the lazy function when module imported aliased (Html.Lazy)" <|
@@ -44,7 +44,7 @@ x = Html.Styled.Lazy.lazy
                 """
 import Html.Lazy as Lazy
 
-x = Lazy.lazy
+x f = Lazy.lazy (\\t -> text t) f
 """
                     |> hasError
         , test "should identify the lazy function when module imported aliased (Html.Styled.Lazy)" <|
@@ -52,7 +52,7 @@ x = Lazy.lazy
                 """
 import Html.Styled.Lazy as Lazy
 
-x = Lazy.lazy
+x f = Lazy.lazy (\\t -> text t) f
 """
                     |> hasError
         , test "should identify the lazy function when module imported explicitly (Html.Lazy)" <|
@@ -60,7 +60,7 @@ x = Lazy.lazy
                 """
 import Html.Lazy exposing (lazy)
 
-x = lazy
+x f = lazy (\\t -> text t) f
 """
                     |> hasError
         , test "should identify the lazy function when module imported explicitly (Html.Styled.Lazy)" <|
@@ -68,7 +68,7 @@ x = lazy
                 """
 import Html.Styled.Lazy exposing (lazy)
 
-x = lazy
+x f = lazy (\\t -> text t) f
 """
                     |> hasError
         , test "should identify the lazy function when module imported exposing all (Html.Lazy)" <|
@@ -76,7 +76,7 @@ x = lazy
                 """
 import Html.Lazy exposing (..)
 
-x = lazy
+x f = lazy (\\t -> text t) f
 """
                     |> hasError
         , test "should identify the lazy function when module imported exposing all (Html.Styled.Lazy)" <|
@@ -84,7 +84,7 @@ x = lazy
                 """
 import Html.Styled.Lazy exposing (..)
 
-x = lazy
+x f = lazy (\\t -> text t) f
 """
                     |> hasError
         ]
@@ -96,7 +96,7 @@ firstArgumentTests =
         header =
             """
 module A exposing (..)
-import Html.Lazy exposing (lazy)
+import Html.Lazy exposing (lazy, lazy2)
 import Html exposing (text) 
 
     """
@@ -121,21 +121,21 @@ import Html exposing (text)
         [ test "reports no error for imported function" <|
             \() ->
                 """
-x = lazy text "Sample Text"
+x t = lazy text t
 """
                     |> runExpectNoError
         , test "reports no error for top-level module function" <|
             \() ->
                 """
 toText t = text t
-x = lazy toText "Sample Text"
+x t = lazy toText t
 """
                     |> runExpectNoError
         , test "reports no error for top-level module function reference" <|
             \() ->
                 """
 toText = text
-x = lazy toText "Sample Text"
+x t = lazy toText t
 """
                     |> runExpectNoError
         , test "reports no error for function argument " <|
@@ -147,14 +147,14 @@ x toText = lazy toText "Sample Text"
         , test "reports no error for bound case pattern function reference" <|
             \() ->
                 """
-x = case (text, 7) of
-    (toText, _) -> lazy toText "Sample Text"
+x t = case (text, 7) of
+    (toText, _) -> lazy toText t
 """
                     |> runExpectNoError
         , test "should report an error for an inline lambda expression" <|
             \() ->
                 """
-x = lazy (\\s -> text s) "Sample Text"            
+x t = lazy (\\s -> text s) t            
 """
                     |> runExpectErrorUnder "(\\s -> text s)"
         , test "should report an error for an inline function application expression" <|
@@ -162,7 +162,7 @@ x = lazy (\\s -> text s) "Sample Text"
                 """
 y s1 s2 = text (s1 ++ s2)
 
-x = lazy (y "Sample ") "Text"            
+x t = lazy (y "Sample ") t           
 """
                     |> runExpectErrorUnder """(y "Sample ")"""
         ]
@@ -174,7 +174,7 @@ extraArgumentsTests =
         header =
             """
 module A exposing (..)
-import Html.Lazy exposing (lazy)
+import Html.Lazy exposing (lazy2)
 import Html exposing (text)
 
     """
@@ -199,31 +199,31 @@ import Html exposing (text)
         [ test "Fails if arg is a lambda" <|
             \_ ->
                 """
-x = lazy text (\\_ -> "Hello")
+x t = lazy2 text (\\_ -> "Hello") t
 """
                     |> runExpectErrorUnder "\\_ -> \"Hello\"" "Lamba expressions are not allowed in arguments to Html.lazy"
         , test "Fails if arg is tuple construction" <|
             \_ ->
                 """
-x = lazy viewTuple (1,2)
+x t = lazy2 viewTuple (1,2) t
 """
                     |> runExpectErrorUnder "(1,2)" "Tuple constructions are not allowed in arguments to Html.lazy"
         , test "Fails if arg is record construction" <|
             \_ ->
                 """
-x = lazy viewTuple { x = 1 }                
+x t = lazy2 viewTuple { x = 1 } t               
 """
                     |> runExpectErrorUnder "{ x = 1 }" "Record constructions are not allowed in arguments to lazy"
         , test "Fails if arg is list construction" <|
             \_ ->
                 """
-x = lazy viewTuple [1]                
+x t = lazy2 viewTuple [1] t               
 """
                     |> runExpectErrorUnder "[1]" "List constructions are not allowed in arguments to lazy"
         , test "Fails if arg is list cons" <|
             \_ ->
                 """
-x = lazy viewTuple (1 :: [])                
+x t = lazy2 viewTuple (1 :: []) t               
 """
                     |> runExpectErrorUnder "1 :: []" "List cons are not allowed in arguments to lazy"
         ]
