@@ -329,7 +329,7 @@ validateLazyFunction context node =
 
 
 validateLazyArg : Context -> Node Expression -> Maybe (Error {})
-validateLazyArg ctx (Node range exp) =
+validateLazyArg _ (Node range exp) =
     case exp of
         LambdaExpression _ ->
             Just <|
