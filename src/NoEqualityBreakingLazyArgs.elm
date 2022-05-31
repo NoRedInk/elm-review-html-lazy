@@ -8,7 +8,6 @@ module NoEqualityBreakingLazyArgs exposing (rule)
 
 import Dict exposing (Dict)
 import Elm.Syntax.Declaration exposing (Declaration(..))
-import Elm.Syntax.Exposing exposing (Exposing(..))
 import Elm.Syntax.Expression as Expression exposing (Expression(..), LetDeclaration(..))
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Pattern exposing (Pattern(..))
@@ -117,58 +116,11 @@ declarationListVisitor declarations context =
     ( [], { context | topLevelNames = Set.fromList topLevelFunctions } )
 
 
-type alias KnownModule =
-    { name : String
-    , functions : Set String
-    }
-
-
-htmlLazyModule : KnownModule
-htmlLazyModule =
-    { name = "Html.Lazy"
-    , functions = Set.fromList [ "lazy", "lazy2", "lazy3", "lazy4", "lazy5", "lazy6", "lazy7", "lazy8" ]
-    }
-
-
-htmlStyledLazyModule : KnownModule
-htmlStyledLazyModule =
-    { name = "Html.Styled.Lazy"
-    , functions = Set.fromList [ "lazy", "lazy2", "lazy3", "lazy4", "lazy5", "lazy6", "lazy7" ]
-    }
-
-
-allLazyFunctions =
-    Set.union htmlLazyModule.functions htmlStyledLazyModule.functions
-
-
-isLazyFunction : Context -> Node Expression -> Bool
-isLazyFunction { importedNames, importedExposingAll } node =
-    case Node.value node of
-        FunctionOrValue _ functionName ->
-            Set.member functionName allLazyFunctions
-                && (case ModuleNameLookupTable.moduleNameFor importedNames node of
-                        Just ((_ :: _) as moduleNameList) ->
-                            let
-                                moduleName =
-                                    moduleNameList |> String.join "."
-                            in
-                            moduleName == htmlLazyModule.name || moduleName == htmlStyledLazyModule.name
-
-                        _ ->
-                            -- This could happen if either `Html.Lazy` or `Html.Styled.Lazy` was imported exposing all and called unqualified
-                            (Set.member htmlLazyModule.name importedExposingAll && Set.member functionName htmlLazyModule.functions)
-                                || (Set.member htmlStyledLazyModule.name importedExposingAll && Set.member functionName htmlStyledLazyModule.functions)
-                   )
-
-        _ ->
-            False
-
-
 expressionEnterVisitor : Node Expression -> Context -> ( List (Error {}), Context )
 expressionEnterVisitor node context =
     case Node.value node of
         Expression.Application (functionNode :: firstArg :: args) ->
-            if isLazyFunction context functionNode then
+            if IdentifyLazy.isLazyFunction context functionNode then
                 ( validateLazyFunction context firstArg
                     :: List.map (validateLazyArg context) args
                     |> List.filterMap identity
