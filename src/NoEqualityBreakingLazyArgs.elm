@@ -10,9 +10,9 @@ import Dict exposing (Dict)
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing exposing (Exposing(..))
 import Elm.Syntax.Expression as Expression exposing (Expression(..), LetDeclaration(..))
-import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Pattern exposing (Pattern(..))
+import Helpers.IdentifyLazy as IdentifyLazy
 import Review.ModuleNameLookupTable as ModuleNameLookupTable exposing (ModuleNameLookupTable)
 import Review.Rule as Rule exposing (ContextCreator, Error, Rule)
 import Set exposing (Set)
@@ -76,7 +76,7 @@ rule =
     -- Define the rule with the same name as the module it is defined in
     Rule.newModuleRuleSchemaUsingContextCreator "NoEqualityBreakingLazyArgs" initialContext
         -- Make it look at expressions
-        |> Rule.withImportVisitor importVisitor
+        |> Rule.withImportVisitor IdentifyLazy.importVisitor
         |> Rule.withDeclarationListVisitor declarationListVisitor
         |> Rule.withExpressionEnterVisitor expressionEnterVisitor
         |> Rule.withExpressionExitVisitor expressionExitVisitor
@@ -87,19 +87,6 @@ initialContext : ContextCreator () Context
 initialContext =
     Rule.initContextCreator (\importedNames () -> { importedNames = importedNames, importedExposingAll = Set.empty, topLevelNames = Set.empty, scopedNames = [] })
         |> Rule.withModuleNameLookupTable
-
-
-{-| ModuleNameLookupTable works very well, unless a module is imported exposing all.
-We use this Import Visitor to keep track of modules that are imported exposing everything.
--}
-importVisitor : Node Import -> Context -> ( List (Error {}), Context )
-importVisitor (Node _ { moduleName, exposingList }) context =
-    case exposingList of
-        Just (Node _ (All _)) ->
-            ( [], { context | importedExposingAll = Set.insert (Node.value moduleName |> String.join ".") context.importedExposingAll } )
-
-        _ ->
-            ( [], context )
 
 
 
