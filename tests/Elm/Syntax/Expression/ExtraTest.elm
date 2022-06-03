@@ -3,9 +3,12 @@ module Elm.Syntax.Expression.ExtraTest exposing (..)
 import Elm.Parser as Parser
 import Elm.Processing as Processing
 import Elm.Syntax.Declaration exposing (Declaration(..))
+import Elm.Syntax.Denode as Denode
 import Elm.Syntax.Expression exposing (Expression(..))
-import Elm.Syntax.Expression.Extra as Extra
+import Elm.Syntax.Expression.Extra as Extra exposing (normalizeApplication)
 import Elm.Syntax.Node as Node exposing (Node(..))
+import Elm.Syntax.Range exposing (Range)
+import Elm.Syntax.Range.Extra exposing (recoverRanges)
 import Expect exposing (Expectation)
 import Test exposing (Test, describe, test)
 
@@ -44,9 +47,9 @@ func = """
     \_ -> expectation
 
 
-all : Test
-all =
-    describe "Elm.Syntax.Expression.Extra"
+foldTests : Test
+foldTests =
+    describe "fold"
         [ describe "Expression count checks"
             [ test "Simple Exp (1)" <|
                 testExpressionCount "1" 1
@@ -111,4 +114,91 @@ all =
             , test "Record Update (2)" <|
                 testExpressionCount "{ x | y = 1, z = 2 }" 3
             ]
+        ]
+
+
+normalizeTest : String -> List String -> (() -> Expectation)
+normalizeTest expString expectedList =
+    \_ ->
+        let
+            prefix =
+                """
+module A exposing (..)
+    
+func = """
+
+            source =
+                prefix ++ expString
+
+            fileResult =
+                Parser.parse source |> Result.map (\rawFile -> Processing.process Processing.init rawFile)
+        in
+        case fileResult of
+            Err deadEnds ->
+                Expect.fail ("Invalid test file: " ++ Debug.toString deadEnds)
+
+            Ok { declarations } ->
+                case declarations of
+                    [ Node _ (FunctionDeclaration { declaration }) ] ->
+                        let
+                            exp =
+                                (Node.value declaration).expression
+
+                            maybeArgs =
+                                normalizeApplication exp
+                                    |> List.map (\node -> Node.range node)
+                                    |> recoverRanges source
+                        in
+                        case maybeArgs of
+                            Just args ->
+                                Expect.equalLists args expectedList
+
+                            Nothing ->
+                                Expect.fail "Failed to recover ranges :("
+
+                    _ ->
+                        Expect.fail "Expected exactly one function declaration in module"
+
+
+
+-- a b -> [a, b]
+-- a b c -> [a, b, c]
+-- a <| b -> [a, b]
+-- b |> a -> [a, b]
+-- a (b) -> [a, b]
+
+
+normalizeApplicationTests : Test
+normalizeApplicationTests =
+    describe "normalizeApplication"
+        [ test "Simple application (1)" <|
+            normalizeTest "a b" [ "a", "b" ]
+        , test "Simple application (2)" <|
+            normalizeTest "a b c" [ "a", "b", "c" ]
+        , test "Left pizza (1)" <|
+            normalizeTest "a <| b" [ "a", "b" ]
+        , test "Left pizza (2)" <|
+            normalizeTest "a b <| c" [ "a", "b", "c" ]
+        , test "Left pizza (3)" <|
+            normalizeTest "a <| b <| c" [ "a", "b", "c" ]
+        , test "Right pizza (1)" <|
+            normalizeTest "a |> b" [ "b", "a" ]
+        , test "Right pizza (2)" <|
+            normalizeTest "a |> b c" [ "b", "c", "a" ]
+        , test "Parenthesized (1)" <|
+            normalizeTest "a (b)" [ "a", "(b)" ]
+        , test "Parenthesized (2)" <|
+            normalizeTest "(a b) c" [ "a", "b", "c" ]
+        , test "Parenthesized (3)" <|
+            normalizeTest "a (b c)" [ "a", "(b c)" ]
+        , test "Parenthesized (4)" <|
+            normalizeTest "(a b)" [ "a", "b" ]
+        ]
+
+
+all : Test
+all =
+    describe "Elm.Syntax.Expression.Extra"
+        [ foldTests
+        , normalizeApplicationTests
         ]

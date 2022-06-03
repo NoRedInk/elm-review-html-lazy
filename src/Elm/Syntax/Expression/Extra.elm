@@ -1,4 +1,4 @@
-module Elm.Syntax.Expression.Extra exposing (fold)
+module Elm.Syntax.Expression.Extra exposing (fold, normalizeApplication)
 
 import Elm.Syntax.Expression exposing (Expression(..), LetDeclaration(..))
 import Elm.Syntax.Node as Node exposing (Node(..))
@@ -71,3 +71,37 @@ foldHelper function accum stack =
 fold : (Node Expression -> a -> a) -> a -> Node Expression -> a
 fold function accum expr =
     foldHelper function accum [ expr ]
+
+
+normalizeApplicationHelper : Node Expression -> List (Node Expression) -> List (Node Expression)
+normalizeApplicationHelper exp accum =
+    case Node.value exp of
+        Application (func :: args) ->
+            normalizeApplicationHelper func (args ++ accum)
+
+        OperatorApplication "<|" _ func arg ->
+            normalizeApplicationHelper func (arg :: accum)
+
+        OperatorApplication "|>" _ arg func ->
+            normalizeApplicationHelper func (arg :: accum)
+
+        ParenthesizedExpression innerExp ->
+            normalizeApplicationHelper innerExp accum
+
+        _ ->
+            exp :: accum
+
+
+{-| Normalizes a function application expression for easier analysis.
+
+    For example all the following expressions will be mapped to the same result of [a, b, c]
+
+    a b c
+    (a b) c
+    a b <| c
+    c |> a b
+
+-}
+normalizeApplication : Node Expression -> List (Node Expression)
+normalizeApplication exp =
+    normalizeApplicationHelper exp []
