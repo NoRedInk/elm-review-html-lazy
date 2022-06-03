@@ -186,11 +186,11 @@ normalizeApplicationTests =
         , test "Right pizza (2)" <|
             normalizeTest "a |> b c" [ "b", "c", "a" ]
         , test "Parenthesized (1)" <|
-            normalizeTest "a (b)" [ "a", "(b)" ]
+            normalizeTest "a (b)" [ "a", "b" ]
         , test "Parenthesized (2)" <|
             normalizeTest "(a b) c" [ "a", "b", "c" ]
         , test "Parenthesized (3)" <|
-            normalizeTest "a (b c)" [ "a", "(b c)" ]
+            normalizeTest "a (b c)" [ "a", "b c" ]
         , test "Parenthesized (4)" <|
             normalizeTest "(a b)" [ "a", "b" ]
         ]

@@ -73,6 +73,16 @@ fold function accum expr =
     foldHelper function accum [ expr ]
 
 
+unParenthesize : Node Expression -> Node Expression
+unParenthesize node =
+    case Node.value node of
+        ParenthesizedExpression exp ->
+            unParenthesize exp
+
+        _ ->
+            node
+
+
 normalizeApplicationHelper : Node Expression -> List (Node Expression) -> List (Node Expression)
 normalizeApplicationHelper exp accum =
     case Node.value exp of
@@ -89,7 +99,7 @@ normalizeApplicationHelper exp accum =
             normalizeApplicationHelper innerExp accum
 
         _ ->
-            exp :: accum
+            exp :: List.map unParenthesize accum
 
 
 {-| Normalizes a function application expression for easier analysis.
