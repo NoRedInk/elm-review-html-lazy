@@ -34,9 +34,9 @@ indexLineStartsHelper string index accum =
 
 recoverHelper : String -> Array Int -> Range -> Maybe String
 recoverHelper source rowStarts { start, end } =
-    case ( Array.get start.row rowStarts, Array.get end.row rowStarts ) of
+    case ( Array.get (start.row - 1) rowStarts, Array.get (end.row - 1) rowStarts ) of
         ( Just startIndex, Just endIndex ) ->
-            String.slice (startIndex + start.column) (endIndex + end.column) source
+            String.slice (startIndex + start.column - 1) (endIndex + end.column - 1) source
                 |> Just
 
         _ ->
