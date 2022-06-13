@@ -1,5 +1,11 @@
 module Elm.Syntax.Expression.Extra exposing (fold, normalizeApplication)
 
+{-| Provides helpers for working with the `Expression` type from `Elm.Syntax.Expression`
+
+@docs fold, normalizeApplication
+
+-}
+
 import Elm.Syntax.Expression exposing (Expression(..), LetDeclaration(..))
 import Elm.Syntax.Node as Node exposing (Node(..))
 
@@ -68,6 +74,24 @@ foldHelper function accum stack =
             foldHelper function (function expr accum) (newStack ++ stackTail)
 
 
+{-| Folds an expression tree from the top to the bottom. The children of any given expression node will be visited depth first from left to right.
+
+Assume that we have a function that can parse an Elm expression fragment `e : String -> Node Expression`
+
+    e "1 + (2 - 3)"
+        |> fold
+            (\(Node _ exp) accum ->
+                case exp of
+                    OperatorApplication op _ _ _ ->
+                        accum ++ [ op ]
+
+                    _ ->
+                        accum
+            )
+            []
+        == [ "+", "-" ]
+
+-}
 fold : (Node Expression -> a -> a) -> a -> Node Expression -> a
 fold function accum expr =
     foldHelper function accum [ expr ]
@@ -102,14 +126,21 @@ normalizeApplicationHelper exp accum =
             exp :: List.map unParenthesize accum
 
 
-{-| Normalizes a function application expression for easier analysis.
+{-| Normalizes a function application expression for easier analysis. Nested function applications (including left and right pizza) will be unnested. Parenthesis around arguments expressions wlil be removed.
 
-    For example all the following expressions will be mapped to the same result of [a, b, c]
+Assume that we have a function that can parse an Elm expression fragment `e : String -> Node Expression`, then the following statements are all true:
 
-    a b c
-    (a b) c
-    a b <| c
-    c |> a b
+    normalizeApplication (e "a b") == [ e "a", e "b" ]
+
+    normalizeApplication (e "a b c") == [ e "a", e "b", e "c" ]
+
+    normalizeApplication (e "a <| b") == [ e "a", e "b" ]
+
+    normalizeApplication (e "b |> a") == [ e "a", e "b" ]
+
+    normalizeApplication (e "(a b) c)") == [ e "a", e "b", e "c" ]
+
+    normalizeApplication (e "a (b)") == [ e "a", e "b" ]
 
 -}
 normalizeApplication : Node Expression -> List (Node Expression)
