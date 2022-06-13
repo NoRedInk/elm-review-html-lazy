@@ -121,7 +121,7 @@ findLazyCalls : ModuleContext -> Node Expression -> List (Node Expression)
 findLazyCalls moduleContext expression =
     fold
         (\exp accum ->
-            if IdentifyLazy.isLazyFunction moduleContext exp then
+            if isLazyFunction moduleContext exp then
                 exp :: accum
 
             else
