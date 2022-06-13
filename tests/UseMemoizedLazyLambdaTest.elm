@@ -1,8 +1,8 @@
-module UseMemoizedLambdaTest exposing (..)
+module UseMemoizedLazyLambdaTest exposing (..)
 
 import Review.Test
 import Test exposing (Test, describe, test)
-import UseMemoizedLambda exposing (rule)
+import UseMemoizedLazyLambda exposing (rule)
 
 
 withHeader : String -> String
