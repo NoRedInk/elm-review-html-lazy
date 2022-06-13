@@ -3,12 +3,9 @@ module Elm.Syntax.Expression.ExtraTest exposing (..)
 import Elm.Parser as Parser
 import Elm.Processing as Processing
 import Elm.Syntax.Declaration exposing (Declaration(..))
-import Elm.Syntax.Denode as Denode
-import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.Expression.Extra as Extra exposing (normalizeApplication)
 import Elm.Syntax.Node as Node exposing (Node(..))
-import Elm.Syntax.Range exposing (Range)
-import Elm.Syntax.Range.Extra exposing (recoverRanges)
+import Elm.Syntax.Range.Extra exposing (lookupRanges)
 import Expect exposing (Expectation)
 import Test exposing (Test, describe, test)
 
@@ -147,7 +144,7 @@ func = """
                             maybeArgs =
                                 normalizeApplication exp
                                     |> List.map (\node -> Node.range node)
-                                    |> recoverRanges source
+                                    |> lookupRanges source
                         in
                         case maybeArgs of
                             Just args ->
@@ -171,9 +168,7 @@ func = """
 normalizeApplicationTests : Test
 normalizeApplicationTests =
     describe "normalizeApplication"
-        [ test "Simple application (1)" <|
-            normalizeTest "a b" [ "a", "b" ]
-        , test "Simple application (2)" <|
+        [ test "Simple application (2)" <|
             normalizeTest "a b c" [ "a", "b", "c" ]
         , test "Left pizza (1)" <|
             normalizeTest "a <| b" [ "a", "b" ]
