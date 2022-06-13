@@ -5,20 +5,19 @@ Provides [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-revi
 
 ## Provided rules
 
-- [`NoEqualityBreakingLazyArgs`](https://package.elm-lang.org/packages/noredink/elm-review-html-lazy/1.0.0/NoEqualityBreakingLazyArgs) - Reports arguments to `lazy` calls that we can definitively prove will always break the reference equality check.
-
+- [`UseMemoizedLazyLambda`](https://package.elm-lang.org/packages/noredink/elm-review-html-lazy/1.0.0/UseMemoizedLazyLambda) - Require calling `lazy` at the top level of a point-free function with a lambda expression as the first argument so that the lambda expression is always memoized.
 
 ## Configuration
 
 ```elm
 module ReviewConfig exposing (config)
 
-import NoEqualityBreakingLazyArgs
+import UseMemoizedLazyLambda
 import Review.Rule exposing (Rule)
 
 config : List Rule
 config =
-    [ NoEqualityBreakingLazyArgs.rule
+    [ UseMemoizedLazyLambda.rule
     ]
 ```
 
