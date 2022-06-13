@@ -23,6 +23,7 @@ type alias ModuleContext =
 
 
 {-| This is a **highly** opinionated rule that requires all calls of `lazy` to be at the top level of a point-free function with a lambda expression as the first argument.
+This prevents errors in the view function argument to lazy.
 
 
 ### What does this look like?
