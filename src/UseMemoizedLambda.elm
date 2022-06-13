@@ -7,7 +7,6 @@ module UseMemoizedLambda exposing (rule)
 -}
 
 import Elm.Syntax.Declaration exposing (Declaration(..))
-import Elm.Syntax.Exposing exposing (Exposing(..))
 import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.Expression.Extra exposing (fold, normalizeApplication)
 import Elm.Syntax.Node as Node exposing (Node(..))
