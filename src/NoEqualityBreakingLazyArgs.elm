@@ -120,15 +120,16 @@ expressionEnterVisitor : Node Expression -> Context -> ( List (Error {}), Contex
 expressionEnterVisitor node context =
     case Node.value node of
         Expression.Application (functionNode :: firstArg :: args) ->
-            if IdentifyLazy.isLazyFunction context functionNode then
-                ( validateLazyFunction context firstArg
-                    :: List.map (validateLazyArg context) args
-                    |> List.filterMap identity
-                , context
-                )
+            case IdentifyLazy.identifyLazyFunction context functionNode of
+                Just _ ->
+                    ( validateLazyFunction context firstArg
+                        :: List.map (validateLazyArg context) args
+                        |> List.filterMap identity
+                    , context
+                    )
 
-            else
-                ( [], context )
+                _ ->
+                    ( [], context )
 
         -- Let expressions can create new name bindings that we might need to follow to determine if they are problematic
         LetExpression { declarations } ->

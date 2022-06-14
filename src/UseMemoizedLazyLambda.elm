@@ -10,7 +10,7 @@ import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.Expression.Extra exposing (fold, normalizeApplication)
 import Elm.Syntax.Node as Node exposing (Node(..))
-import Helpers.IdentifyLazy as IdentifyLazy exposing (isLazyFunction)
+import Helpers.IdentifyLazy as IdentifyLazy exposing (identifyLazyFunction)
 import Review.ModuleNameLookupTable exposing (ModuleNameLookupTable)
 import Review.Rule as Rule exposing (ContextCreator, Error, Rule)
 import Set exposing (Set)
@@ -121,11 +121,12 @@ findLazyCalls : ModuleContext -> Node Expression -> List (Node Expression)
 findLazyCalls moduleContext expression =
     fold
         (\exp accum ->
-            if isLazyFunction moduleContext exp then
-                exp :: accum
+            case identifyLazyFunction moduleContext exp of
+                Just _ ->
+                    exp :: accum
 
-            else
-                accum
+                _ ->
+                    []
         )
         []
         expression
@@ -143,8 +144,8 @@ declarationEnterVisitor node moduleContext =
                 badLazyCalls =
                     case ( normalizeApplication decl.expression, decl.arguments ) of
                         ( [ lazyFunc, lambda ], [] ) ->
-                            case ( isLazyFunction moduleContext lazyFunc, lambda ) of
-                                ( True, Node _ (LambdaExpression _) ) ->
+                            case ( identifyLazyFunction moduleContext lazyFunc, lambda ) of
+                                ( Just _, Node _ (LambdaExpression _) ) ->
                                     findLazyCalls moduleContext lambda
 
                                 _ ->

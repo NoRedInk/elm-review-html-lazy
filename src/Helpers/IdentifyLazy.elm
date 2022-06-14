@@ -1,5 +1,6 @@
-module Helpers.IdentifyLazy exposing (importVisitor, isLazyFunction)
+module Helpers.IdentifyLazy exposing (identifyLazyFunction, importVisitor)
 
+import Dict exposing (Dict)
 import Elm.Syntax.Exposing exposing (Exposing(..))
 import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.Import exposing (Import)
@@ -45,32 +46,66 @@ htmlStyledLazyModule =
     }
 
 
-allLazyFunctions : Set String
-allLazyFunctions =
-    Set.union htmlLazyModule.functions htmlStyledLazyModule.functions
+airityTable : Dict String Int
+airityTable =
+    Dict.fromList
+        [ ( "lazy", 1 )
+        , ( "lazy2", 2 )
+        , ( "lazy3", 3 )
+        , ( "lazy4", 4 )
+        , ( "lazy5", 5 )
+        , ( "lazy6", 6 )
+        , ( "lazy7", 7 )
+        , ( "lazy8", 8 )
+        ]
 
 
-isLazyFunction :
+{-| Identifies a given node as a reference to lazy. If the node is a lazy call then the result of
+`identifyLazyFunction` is a `Just` with the view functions airity otherwise `Nothing`.
+
+Note that actual airity of the lazy function is +1 as it takes the view function as an argument.
+
+-}
+identifyLazyFunction :
     { context | importedNames : ModuleNameLookupTable, importedExposingAll : Set String }
     -> Node Expression
-    -> Bool
-isLazyFunction { importedNames, importedExposingAll } node =
+    -> Maybe Int
+identifyLazyFunction { importedNames, importedExposingAll } node =
     case Node.value node of
         FunctionOrValue _ functionName ->
-            Set.member functionName allLazyFunctions
-                && (case ModuleNameLookupTable.moduleNameFor importedNames node of
+            case Dict.get functionName airityTable of
+                (Just _) as airity ->
+                    case ModuleNameLookupTable.moduleNameFor importedNames node of
                         Just ((_ :: _) as moduleNameList) ->
                             let
                                 moduleName =
                                     moduleNameList |> String.join "."
+
+                                isLazyModule =
+                                    moduleName == htmlLazyModule.name || moduleName == htmlStyledLazyModule.name
                             in
-                            moduleName == htmlLazyModule.name || moduleName == htmlStyledLazyModule.name
+                            if isLazyModule then
+                                airity
+
+                            else
+                                Nothing
 
                         _ ->
-                            -- This could happen if either `Html.Lazy` or `Html.Styled.Lazy` was imported exposing all and called unqualified
-                            (Set.member htmlLazyModule.name importedExposingAll && Set.member functionName htmlLazyModule.functions)
-                                || (Set.member htmlStyledLazyModule.name importedExposingAll && Set.member functionName htmlStyledLazyModule.functions)
-                   )
+                            let
+                                fromHtmlLazy =
+                                    Set.member htmlLazyModule.name importedExposingAll && Set.member functionName htmlLazyModule.functions
+
+                                fromHtmlStyledLazy =
+                                    Set.member htmlStyledLazyModule.name importedExposingAll && Set.member functionName htmlStyledLazyModule.functions
+                            in
+                            if fromHtmlLazy || fromHtmlStyledLazy then
+                                airity
+
+                            else
+                                Nothing
+
+                _ ->
+                    Nothing
 
         _ ->
-            False
+            Nothing
