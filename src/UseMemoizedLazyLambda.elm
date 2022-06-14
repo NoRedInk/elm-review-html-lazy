@@ -126,7 +126,7 @@ findLazyCalls moduleContext expression =
                     exp :: accum
 
                 _ ->
-                    []
+                    accum
         )
         []
         expression
