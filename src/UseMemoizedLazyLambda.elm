@@ -136,27 +136,70 @@ findLazyCalls moduleContext expression =
 declarationEnterVisitor : Node Declaration -> ModuleContext -> ( List (Error {}), ModuleContext )
 declarationEnterVisitor node moduleContext =
     case Node.value node of
-        FunctionDeclaration { declaration } ->
+        FunctionDeclaration { declaration, signature } ->
             let
                 decl =
                     Node.value declaration
 
-                badLazyCalls =
+                makeLazyError (Node range _) =
+                    Rule.error { message = "Calls to lazy should be memoized at the top level of a view function with a lambda function argument.", details = [ "See here" ] } range
+
+                errors =
                     case ( normalizeApplication decl.expression, decl.arguments ) of
                         ( [ lazyFunc, lambda ], [] ) ->
                             case ( identifyLazyFunction moduleContext lazyFunc, lambda ) of
-                                ( Just _, Node _ (LambdaExpression _) ) ->
-                                    findLazyCalls moduleContext lambda
+                                ( Just ( lazyName, airity ), Node lambdaRange (LambdaExpression { args }) ) ->
+                                    let
+                                        badInnerLazyCalls =
+                                            findLazyCalls moduleContext lambda
+                                                |> List.map makeLazyError
+
+                                        signatureErrors =
+                                            case ( badInnerLazyCalls, signature ) of
+                                                ( [], Nothing ) ->
+                                                    Rule.error
+                                                        { message = "This function which calls lazy is missing a type signature."
+                                                        , details = [ "A type signature improves clarity and can help other rules do more powerful analysis." ]
+                                                        }
+                                                        (Node.range node)
+                                                        |> List.singleton
+
+                                                _ ->
+                                                    []
+
+                                        airityErrors =
+                                            if List.length args == airity then
+                                                []
+
+                                            else
+                                                let
+                                                    lambdaString =
+                                                        case List.length args of
+                                                            1 ->
+                                                                "1 argument"
+
+                                                            x ->
+                                                                String.fromInt x ++ " arguments"
+                                                in
+                                                Rule.error
+                                                    { message = "The airity (number of arguments) of this lambda expression should match the number of arguments expected by the lazy function."
+                                                    , details =
+                                                        [ "This lambda expression accepts " ++ lambdaString ++ ", but the lazy function is " ++ lazyName ++ "."
+                                                        , "Giving names to all arguments can give clarity to future readers of this code."
+                                                        ]
+                                                    }
+                                                    lambdaRange
+                                                    |> List.singleton
+                                    in
+                                    badInnerLazyCalls ++ signatureErrors ++ airityErrors
 
                                 _ ->
                                     findLazyCalls moduleContext decl.expression
+                                        |> List.map makeLazyError
 
                         _ ->
                             findLazyCalls moduleContext decl.expression
-
-                errors =
-                    badLazyCalls
-                        |> List.map (Node.range >> Rule.error { message = "Calls to lazy should be memoized at the top level of a view function with a lambda function argument.", details = [ "See here" ] })
+                                |> List.map makeLazyError
             in
             ( errors, moduleContext )
 

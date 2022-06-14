@@ -61,7 +61,7 @@ airityTable =
 
 
 {-| Identifies a given node as a reference to lazy. If the node is a lazy call then the result of
-`identifyLazyFunction` is a `Just` with the view functions airity otherwise `Nothing`.
+`identifyLazyFunction` is a `Just` with the function name and the airity of the view function otherwise `Nothing`.
 
 Note that actual airity of the lazy function is +1 as it takes the view function as an argument.
 
@@ -69,12 +69,12 @@ Note that actual airity of the lazy function is +1 as it takes the view function
 identifyLazyFunction :
     { context | importedNames : ModuleNameLookupTable, importedExposingAll : Set String }
     -> Node Expression
-    -> Maybe Int
+    -> Maybe ( String, Int )
 identifyLazyFunction { importedNames, importedExposingAll } node =
     case Node.value node of
         FunctionOrValue _ functionName ->
             case Dict.get functionName airityTable of
-                (Just _) as airity ->
+                Just airity ->
                     case ModuleNameLookupTable.moduleNameFor importedNames node of
                         Just ((_ :: _) as moduleNameList) ->
                             let
@@ -85,7 +85,7 @@ identifyLazyFunction { importedNames, importedExposingAll } node =
                                     moduleName == htmlLazyModule.name || moduleName == htmlStyledLazyModule.name
                             in
                             if isLazyModule then
-                                airity
+                                Just ( functionName, airity )
 
                             else
                                 Nothing
@@ -99,7 +99,7 @@ identifyLazyFunction { importedNames, importedExposingAll } node =
                                     Set.member htmlStyledLazyModule.name importedExposingAll && Set.member functionName htmlStyledLazyModule.functions
                             in
                             if fromHtmlLazy || fromHtmlStyledLazy then
-                                airity
+                                Just ( functionName, airity )
 
                             else
                                 Nothing
