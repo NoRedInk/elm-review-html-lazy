@@ -1,8 +1,8 @@
-module Elm.Syntax.Range.Extra exposing (lookupRange, lookupRanges)
+module Elm.Syntax.Range.Extra exposing (lookupRanges)
 
 {-| Provides helpers for working with Ranges produced by `elm-syntax`
 
-@docs lookupRange, lookupRanges
+@docs lookupRanges
 
 -}
 
@@ -68,25 +68,6 @@ recoverHelper source rowStarts { start, end } =
 
         _ ->
             Nothing
-
-
-{-| Lookup the string pointed to by a range in the source it was originally generated from.
-
-    lookupRange "1 + 2"
-        { start =
-            { row = 1, column = 1 }
-        , end =
-            { row = 1, column = 2 }
-        }
-        == "1"
-
-Note that if the range is out of bounds of the source text `lookupRange` will return nothing.
-This can only happen if the range was not produced from the provided source text.
-
--}
-lookupRange : String -> Range -> Maybe String
-lookupRange source range =
-    recoverHelper source (indexLineStarts source) range
 
 
 {-| Use this instead of `recoverRange` when trying to recover multiple ranges from the same source text.

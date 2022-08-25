@@ -1,19 +1,19 @@
 module Elm.Syntax.Denode exposing
-    ( Comment, denodeComment
-    , Declaration(..), denodeDeclaration
-    , Documentation, denodeDocumentation
-    , Exposing(..), denodeExposing, TopLevelExpose(..), denodeTopLevelExpose, ExposedType, denodeExposedType
-    , Expression(..), denodeExpression, Lambda, denodeLambda, LetBlock, denodeLetBlock, LetDeclaration(..), denodeLetDeclaration, RecordSetter, denodeRecordSetter, CaseBlock, denodeCaseBlock, Cases, denodeCases, Case, denodeCase, Function, denodeFunction, FunctionImplementation, denodeFunctionImplementation
+    ( Comment
+    , Declaration(..)
+    , Documentation
+    , Exposing(..), TopLevelExpose(..), ExposedType
+    , Expression(..), Lambda, LetBlock, LetDeclaration(..), RecordSetter, CaseBlock, Cases, Case, Function, FunctionImplementation
     , File, denodeFile
-    , Import, denodeImport
-    , Infix, denodeInfix, InfixDirection, denodeInfixDirection
-    , Module(..), denodeModule, DefaultModuleData, denodeDefaultModuleData, EffectModuleData, denodeEffectModuleData
-    , ModuleName, denodeModuleName
-    , Pattern(..), denodePattern, QualifiedNameRef, denodeQualifiedNameRef
-    , Signature, denodeSignature
-    , Type, denodeType, ValueConstructor, denodeValueConstructor
-    , TypeAlias, denodeTypeAlias
-    , TypeAnnotation(..), denodeTypeAnnotation, RecordDefinition, denodeRecordDefinition, RecordField, denodeRecordField
+    , Import
+    , Infix, InfixDirection
+    , Module(..), DefaultModuleData, EffectModuleData
+    , Pattern(..), QualifiedNameRef
+    , Signature
+    , Type, ValueConstructor
+    , TypeAlias
+    , RecordDefinition, RecordField
+    , ModuleName, TypeAnnotation(..)
     )
 
 {-| This library provides a mirror of all types in `Elm.Syntax.*` modules without any `Node` wrappers and
@@ -60,27 +60,27 @@ Yields
 
 ## Elm.Syntax.Comments
 
-@docs Comment, denodeComment
+@docs Comment
 
 
 ## Elm.Syntax.Declaration
 
-@docs Declaration, denodeDeclaration
+@docs Declaration
 
 
 ## Elm.Syntax.Documentation
 
-@docs Documentation, denodeDocumentation
+@docs Documentation
 
 
 ## Elm.Syntax.Exposing
 
-@docs Exposing, denodeExposing, TopLevelExpose, denodeTopLevelExpose, ExposedType, denodeExposedType
+@docs Exposing, TopLevelExpose, ExposedType
 
 
 ## Elm.Syntax.Expression
 
-@docs Expression, denodeExpression, Lambda, denodeLambda, LetBlock, denodeLetBlock, LetDeclaration, denodeLetDeclaration, RecordSetter, denodeRecordSetter, CaseBlock, denodeCaseBlock, Cases, denodeCases, Case, denodeCase, Function, denodeFunction, FunctionImplementation, denodeFunctionImplementation
+@docs Expression, Lambda, LetBlock, LetDeclaration, RecordSetter, CaseBlock, Cases, Case, Function, FunctionImplementation
 
 
 ## Elm.Syntax.File
@@ -90,47 +90,47 @@ Yields
 
 ## Elm.Syntax.Import
 
-@docs Import, denodeImport
+@docs Import
 
 
 ## Elm.Syntax.Infix
 
-@docs Infix, denodeInfix, InfixDirection, denodeInfixDirection
+@docs Infix, InfixDirection
 
 
 ## Elm.Syntax.Module
 
-@docs Module, denodeModule, DefaultModuleData, denodeDefaultModuleData, EffectModuleData, denodeEffectModuleData
+@docs Module, denodeModule, DefaultModuleData, EffectModuleData
 
 
 ## Elm.Syntax.ModuleName
 
-@docs ModuleName, denodeModuleName
+@docs ModuleNameName
 
 
 ## Elm.Syntax.Pattern
 
-@docs Pattern, denodePattern, QualifiedNameRef, denodeQualifiedNameRef
+@docs Pattern, QualifiedNameRef
 
 
 ## Elm.Syntax.Signature
 
-@docs Signature, denodeSignature
+@docs Signature
 
 
 ## Elm.Syntax.Type
 
-@docs Type, denodeType, ValueConstructor, denodeValueConstructor
+@docs Type, denodeType, ValueConstructor
 
 
 ## Elm.Syntax.TypeAlias
 
-@docs TypeAlias, denodeTypeAlias
+@docs TypeAlias
 
 
 ## Elm.Syntax.TypeAnnotation
 
-@docs TypeAnnotation, denodeTypeAnnotation, RecordDefinition, denodeRecordDefinition, RecordField, denodeRecordField
+@docs TypeAnnotationAnnotation, RecordDefinition, RecordField
 
 -}
 
