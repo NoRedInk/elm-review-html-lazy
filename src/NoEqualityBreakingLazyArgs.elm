@@ -123,7 +123,7 @@ expressionEnterVisitor node context =
             case IdentifyLazy.identifyLazyFunction context functionNode of
                 Just _ ->
                     ( validateLazyFunction context firstArg
-                        :: List.map (validateLazyArg context) args
+                        :: List.map validateLazyArg args
                         |> List.filterMap identity
                     , context
                     )
@@ -268,8 +268,8 @@ validateLazyFunction context node =
                 |> Just
 
 
-validateLazyArg : Context -> Node Expression -> Maybe (Error {})
-validateLazyArg ctx (Node range exp) =
+validateLazyArg : Node Expression -> Maybe (Error {})
+validateLazyArg (Node range exp) =
     case exp of
         LambdaExpression _ ->
             Just <|
@@ -280,7 +280,7 @@ validateLazyArg ctx (Node range exp) =
                 Rule.error { message = "Tuple constructions are not allowed in arguments to Html.lazy", details = [ "See <TODO: link>" ] } range
 
         ParenthesizedExpression child ->
-            validateLazyArg ctx child
+            validateLazyArg child
 
         RecordExpr _ ->
             Just <|

@@ -1,6 +1,10 @@
 # elm-review-html-lazy
 
-Provides [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) rules detect incorrect usage of [`Html.Lazy`](https://package.elm-lang.org/packages/elm/html/latest/Html.Lazy) and [`Html.Styled.Lazy`](https://package.elm-lang.org/packages/rtfeldman/elm-css/latest/Html.Styled.Lazy) .
+Provides [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) rules to detect incorrect usage of:
+- [`Html.Lazy`](https://package.elm-lang.org/packages/elm/html/latest/Html.Lazy)
+- [`Html.Styled.Lazy`](https://package.elm-lang.org/packages/rtfeldman/elm-css/latest/Html.Styled.Lazy)
+- [`Element.Lazy`](https://package.elm-lang.org/packages/mdgriffith/elm-ui/latest/Element-Lazy)
+- [`Element.WithContext.Lazy`](https://package.elm-lang.org/packages/miniBill/elm-ui-with-context/latest/Element-WithContext-Lazy).
 
 
 ## Provided rules
