@@ -32,18 +32,37 @@ type alias KnownModule =
     }
 
 
-htmlLazyModule : KnownModule
-htmlLazyModule =
-    { name = "Html.Lazy"
-    , functions = Set.fromList [ "lazy", "lazy2", "lazy3", "lazy4", "lazy5", "lazy6", "lazy7", "lazy8" ]
-    }
+knownModules : List KnownModule
+knownModules =
+    [ { name = "Html.Lazy"
+      , functions = lazySet 8
+      }
+    , { name = "Html.Styled.Lazy"
+      , functions = lazySet 7
+      }
+    , { name = "Element.Lazy"
+      , functions = lazySet 5
+      }
+    , { name = "Element.WithContext.Lazy"
+      , functions = lazySet 3
+      }
+    ]
 
 
-htmlStyledLazyModule : KnownModule
-htmlStyledLazyModule =
-    { name = "Html.Styled.Lazy"
-    , functions = Set.fromList [ "lazy", "lazy2", "lazy3", "lazy4", "lazy5", "lazy6", "lazy7" ]
-    }
+lazySet : Int -> Set String
+lazySet n =
+    lazySetHelper n Set.empty
+
+
+lazySetHelper : Int -> Set String -> Set String
+lazySetHelper n acc =
+    if n > 1 then
+        lazySetHelper
+            (n - 1)
+            (Set.insert ("lazy" ++ String.fromInt n) acc)
+
+    else
+        Set.insert "lazy" acc
 
 
 airityTable : Dict String Int
@@ -78,11 +97,15 @@ identifyLazyFunction { importedNames, importedExposingAll } node =
                     case ModuleNameLookupTable.moduleNameFor importedNames node of
                         Just ((_ :: _) as moduleNameList) ->
                             let
+                                moduleName : String
                                 moduleName =
                                     moduleNameList |> String.join "."
 
+                                isLazyModule : Bool
                                 isLazyModule =
-                                    moduleName == htmlLazyModule.name || moduleName == htmlStyledLazyModule.name
+                                    knownModules
+                                        |> List.map .name
+                                        |> List.member moduleName
                             in
                             if isLazyModule then
                                 Just ( functionName, airity )
@@ -92,13 +115,16 @@ identifyLazyFunction { importedNames, importedExposingAll } node =
 
                         _ ->
                             let
-                                fromHtmlLazy =
-                                    Set.member htmlLazyModule.name importedExposingAll && Set.member functionName htmlLazyModule.functions
-
-                                fromHtmlStyledLazy =
-                                    Set.member htmlStyledLazyModule.name importedExposingAll && Set.member functionName htmlStyledLazyModule.functions
+                                fromKnown : Bool
+                                fromKnown =
+                                    List.any
+                                        (\mod ->
+                                            Set.member mod.name importedExposingAll
+                                                && Set.member functionName mod.functions
+                                        )
+                                        knownModules
                             in
-                            if fromHtmlLazy || fromHtmlStyledLazy then
+                            if fromKnown then
                                 Just ( functionName, airity )
 
                             else

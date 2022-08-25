@@ -39,6 +39,22 @@ import Html.Styled.Lazy
 x = Html.Styled.Lazy.lazy
 """
                     |> hasError
+        , test "should identify the lazy function when module imported unaliased (Element.Lazy)" <|
+            \() ->
+                """
+import Element.Lazy
+
+x = Element.Lazy.lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported unaliased (Element.WithContext.Lazy)" <|
+            \() ->
+                """
+import Element.WithContext.Lazy
+
+x = Element.WithContext.Lazy.lazy
+"""
+                    |> hasError
         , test "should identify the lazy function when module imported aliased (Html.Lazy)" <|
             \() ->
                 """
@@ -51,6 +67,22 @@ x = Lazy.lazy
             \() ->
                 """
 import Html.Styled.Lazy as Lazy
+
+x = Lazy.lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported aliased (Element.Lazy)" <|
+            \() ->
+                """
+import Element.Lazy as Lazy
+
+x = Lazy.lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported aliased (Element.WithContext.Lazy)" <|
+            \() ->
+                """
+import Element.WithContext.Lazy as Lazy
 
 x = Lazy.lazy
 """
@@ -71,6 +103,22 @@ import Html.Styled.Lazy exposing (lazy)
 x = lazy
 """
                     |> hasError
+        , test "should identify the lazy function when module imported explicitly (Element.Lazy)" <|
+            \() ->
+                """
+import Element.Lazy exposing (lazy)
+
+x = lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported explicitly (Element.WithContext.Lazy)" <|
+            \() ->
+                """
+import Element.WithContext.Lazy exposing (lazy)
+
+x = lazy
+"""
+                    |> hasError
         , test "should identify the lazy function when module imported exposing all (Html.Lazy)" <|
             \() ->
                 """
@@ -83,6 +131,22 @@ x = lazy
             \() ->
                 """
 import Html.Styled.Lazy exposing (..)
+
+x = lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported exposing all (Element.Lazy)" <|
+            \() ->
+                """
+import Element.Lazy exposing (..)
+
+x = lazy
+"""
+                    |> hasError
+        , test "should identify the lazy function when module imported exposing all (Element.WithContext.Lazy)" <|
+            \() ->
+                """
+import Element.WithContext.Lazy exposing (..)
 
 x = lazy
 """
